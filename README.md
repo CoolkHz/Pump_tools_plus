@@ -66,7 +66,7 @@
 ## 安装部署
 
 ```bash
-git clone https://github.com/your-username/solana-tools.git
+git clone https://github.com/vnxfsc/Pump_tools_bak.git
 cd solana-tools
 ```
 
