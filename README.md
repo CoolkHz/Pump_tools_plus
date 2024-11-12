@@ -80,6 +80,7 @@ npm run dev
 ```
 
 ## 项目结构
+```
 Pump_tools_bak/
 ├── components/ # React组件
 ├── lib/ # 工具类和数据库操作
@@ -99,6 +100,7 @@ Pump_tools_bak/
 ├── .env.local # 环境变量
 ├── next.config.js # Next.js配置
 └── package.json # 项目配置
+```
 
 ## API接口说明
 
