@@ -21,6 +21,8 @@ import { useState, useRef, useCallback } from 'react'
 import KOTH from '../lib/KOTH'
 import NEW from '../lib/NEW'
 import TradeHandler from '../lib/tradeHandler'
+import { Keypair } from '@solana/web3.js'
+import { VanityAddressGenerator } from '../lib/vanityAddress'
 
 export default function PumpFun() {
   const bgColor = useColorModeValue('white', 'gray.800')
@@ -33,6 +35,7 @@ export default function PumpFun() {
   const [strategy, setStrategy] = useState('mountain')
   const [rugPercentage, setRugPercentage] = useState(50)
   const [isAutoFetching, setIsAutoFetching] = useState(false)
+  const [mintKeypair, setMintKeypair] = useState(null)
 
   // 日志状态
   const [logs, setLogs] = useState([])
@@ -51,6 +54,9 @@ export default function PumpFun() {
   const [walletCount, setWalletCount] = useState(5)
   const [isVolumeTrading, setIsVolumeTrading] = useState(false)
 
+  // 添加生成合约地址函数
+  const [desiredSuffix, setDesiredSuffix] = useState('pump');
+
   // 日志函数
   const addLog = useCallback((message, type = 'info') => {
     const newLog = {
@@ -68,13 +74,8 @@ export default function PumpFun() {
   // 一键仿盘处理函数
   const handleStartCopy = async () => {
     try {
-      // 1. 验证必要参数
-      if (!contractAddress) {
-        addLog('请输入合约地址', 'error')
-        return
-      }
-      if (minPosition >= maxPosition) {
-        addLog('最小买入金额必须小于最大买入金额', 'error')
+      if (!mintKeypair) {
+        addLog('请先生成合约地址', 'error')
         return
       }
 
@@ -110,7 +111,7 @@ export default function PumpFun() {
         await tradeHandler.prepareMetadata(
           metadata,
           strategy,
-          contractAddress,
+          mintKeypair,
           Number(minPosition),
           Number(maxPosition)
         )
@@ -123,6 +124,61 @@ export default function PumpFun() {
       setIsAutoFetching(false)
     }
   }
+
+  // 添加生成合约地址的函数
+  const [isGenerating, setIsGenerating] = useState(false);
+
+  const handleCancel = () => {
+    if (generator) {
+      generator.stopWorkers();
+      setIsGenerating(false);
+      addLog('已取消地址生成', 'warning');
+    }
+  };
+
+  // 在组件中保存 generator 实例
+  const [generator, setGenerator] = useState(null);
+
+  const generateNewContract = async () => {
+    setIsGenerating(true);
+    const newGenerator = new VanityAddressGenerator(addLog);
+    setGenerator(newGenerator);
+    
+    try {
+      const startTime = Date.now();
+      let lastProgressUpdate = startTime;
+      
+      const result = await newGenerator.generateEndsWith(desiredSuffix, (attempts) => {
+        const now = Date.now();
+        // 每秒最多更新一次进度，避免UI卡顿
+        if (now - lastProgressUpdate >= 1000) {
+          const elapsedSeconds = (now - startTime) / 1000;
+          const speed = Math.round(attempts / elapsedSeconds);
+          addLog(`已尝试 ${attempts.toLocaleString()} 次... (${speed.toLocaleString()} 次/秒)`, 'info');
+          lastProgressUpdate = now;
+        }
+      });
+
+      const endTime = Date.now();
+      const totalSeconds = (endTime - startTime) / 1000;
+      const speed = Math.round(result.attempts / totalSeconds);
+
+      setMintKeypair(result.keypair);
+      setContractAddress(result.keypair.publicKey.toString());
+      
+      addLog(`成功生成地址: ${result.keypair.publicKey.toString()}`, 'success');
+      addLog(`总尝试次数: ${result.attempts.toLocaleString()}`, 'info');
+      addLog(`耗时: ${totalSeconds.toFixed(2)}秒 (${speed.toLocaleString()} 次/秒)`, 'info');
+      
+    } catch (error) {
+      if (error.message !== '已取消生成') {
+        addLog(`生成失败: ${error.message}`, 'error');
+      }
+    } finally {
+      setIsGenerating(false);
+      setGenerator(null);
+    }
+  };
 
   return (
     <Grid 
@@ -148,12 +204,41 @@ export default function PumpFun() {
           {/* 合约地址 */}
           <Box>
             <Text mb={2} fontWeight="bold">合约地址</Text>
-            <Input
-              value={contractAddress}
-              onChange={(e) => setContractAddress(e.target.value)}
-              placeholder="输入合约CA地址"
-              size="sm"
-            />
+            <HStack>
+              <Input
+                value={contractAddress}
+                isReadOnly={true}
+                placeholder="点击生成新合约地址"
+                size="sm"
+              />
+              <HStack>
+                <Input
+                  value={desiredSuffix}
+                  onChange={(e) => setDesiredSuffix(e.target.value)}
+                  placeholder="输入后缀(区分大小写)"
+                  size="sm"
+                  width="150px"
+                />
+                {isGenerating ? (
+                  <Button
+                    colorScheme="red"
+                    size="sm"
+                    onClick={handleCancel}
+                  >
+                    取消生成
+                  </Button>
+                ) : (
+                  <Button
+                    colorScheme="blue"
+                    size="sm"
+                    onClick={generateNewContract}
+                    isLoading={isGenerating}
+                  >
+                    生成新地址
+                  </Button>
+                )}
+              </HStack>
+            </HStack>
           </Box>
 
           {/* 策略选择和底仓买入区间 */}
