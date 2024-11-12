@@ -1,0 +1,32 @@
+{
+  "name": "solana-tools",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start"
+  },
+  "dependencies": {
+    "@chakra-ui/icons": "^2.2.4",
+    "@chakra-ui/react": "^2.10.4",
+    "@emotion/react": "^11.13.3",
+    "@emotion/styled": "^11.13.0",
+    "@solana/spl-token": "^0.x",
+    "@solana/web3.js": "^1.95.4",
+    "axios": "^1.6.7",
+    "bs58": "^6.0.0",
+    "file-saver": "^2.0.5",
+    "form-data": "^4.0.1",
+    "framer-motion": "^6.5.1",
+    "fs": "^0.0.1-security",
+    "next": "^12.x",
+    "papaparse": "^5.4.1",
+    "react": "^18.x",
+    "react-dom": "^18.x",
+    "react-icons": "^5.3.0",
+    "sqlite": "^5.1.1",
+    "sqlite3": "^5.1.7",
+    "ws": "^8.18.0"
+  }
+}
