@@ -120,11 +120,10 @@ solana-tools/
 - 建议使用付费节点以提高稳定性
 
 ## 参与贡献
-欢迎提交 Pull Request 或提出 Issue。详细贡献指南请参考 [CONTRIBUTING.md](CONTRIBUTING.md)。
+欢迎提交 Pull Request 或提出 Issue。
 
 ## 问题反馈
 如果你发现了bug或有新功能建议，请提交 Issue。
 
 ## 更新计划
 我们会定期更新项目进展，请关注项目动态。每个重要功能完成后都会发布新版本。
-```
