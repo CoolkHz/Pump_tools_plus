@@ -1,7 +1,7 @@
 # PumpFun Tools - PumpFun工具集
-
+联系我：https://t.me/Pornhub_CNC
 一个功能强大的PumpFun工具集合，包含钱包管理、虚拟地址生成和交易执行等功能。
-
+联系我：
 ## 主要功能
 
 ### 1. 钱包管理 (Wallet Manager)
