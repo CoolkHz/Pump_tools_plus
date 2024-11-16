@@ -14,9 +14,9 @@ export default async function handler(req, res) {
       ['Dev']
     )
 
-    // 获取底仓钱包
+    // 获取所有底仓钱包，不限制数量
     const baseWallets = await db.all(
-      'SELECT private_key FROM wallets WHERE wallet_group = ? LIMIT 4',
+      'SELECT private_key FROM wallets WHERE wallet_group = ?',
       ['底仓']
     )
 

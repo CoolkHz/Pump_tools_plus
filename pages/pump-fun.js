@@ -17,7 +17,7 @@ import {
   RadioGroup,
   Radio,
 } from '@chakra-ui/react'
-import { useState, useRef, useCallback } from 'react'
+import { useState, useRef, useCallback, useEffect } from 'react'
 import KOTH from '../lib/KOTH'
 import NEW from '../lib/NEW'
 import TradeHandler from '../lib/tradeHandler'
@@ -55,7 +55,7 @@ export default function PumpFun() {
   const [isVolumeTrading, setIsVolumeTrading] = useState(false)
 
   // 添加生成合约地址函数
-  const [desiredSuffix, setDesiredSuffix] = useState('pump');
+  const [desiredSuffix, setDesiredSuffix] = useState('');
 
   // 日志函数
   const addLog = useCallback((message, type = 'info') => {
@@ -88,18 +88,12 @@ export default function PumpFun() {
         metadata = await koth.fetchKOTHMetadata()
         console.log('获取到的山丘之王数据:', metadata)
         
-        addLog(`代币名称: ${metadata.metadata.name}`, 'info')
-        addLog(`代币符号: ${metadata.metadata.symbol}`, 'info')
-        addLog(`合约地址: ${metadata.mint}`, 'info')
         addLog(`图片已保存: ${metadata.metadata.savedImage}`, 'success')
       } else {
         const newToken = new NEW(addLog)
         metadata = await newToken.fetchNewMetadata()
         console.log('获取到的新代币数据:', metadata)
         
-        addLog(`代币名称: ${metadata.metadata.name}`, 'info')
-        addLog(`代币符号: ${metadata.metadata.symbol}`, 'info')
-        addLog(`合约地址: ${metadata.mint}`, 'info')
         addLog(`图片已保存: ${metadata.metadata.savedImage}`, 'success')
         
         newToken.cleanup()
@@ -150,7 +144,6 @@ export default function PumpFun() {
       
       const result = await newGenerator.generateEndsWith(desiredSuffix, (attempts) => {
         const now = Date.now();
-        // 每秒最多更新一次进度，避免UI卡顿
         if (now - lastProgressUpdate >= 1000) {
           const elapsedSeconds = (now - startTime) / 1000;
           const speed = Math.round(attempts / elapsedSeconds);
@@ -166,6 +159,23 @@ export default function PumpFun() {
       setMintKeypair(result.keypair);
       setContractAddress(result.keypair.publicKey.toString());
       
+      const state = {
+        contractAddress: result.keypair.publicKey.toString(),
+        minPosition,
+        maxPosition,
+        strategy,
+        rugPercentage,
+        tradeMode,
+        minTradePosition,
+        maxTradePosition,
+        tradingPercentage,
+        tradeAmount,
+        walletCount,
+        desiredSuffix,
+        mintKeypairSecretKey: Array.from(result.keypair.secretKey)
+      };
+      localStorage.setItem('pumpFunState', JSON.stringify(state));
+      
       addLog(`成功生成地址: ${result.keypair.publicKey.toString()}`, 'success');
       addLog(`总尝试次数: ${result.attempts.toLocaleString()}`, 'info');
       addLog(`耗时: ${totalSeconds.toFixed(2)}秒 (${speed.toLocaleString()} 次/秒)`, 'info');
@@ -180,10 +190,144 @@ export default function PumpFun() {
     }
   };
 
+  // 修改卖出处理函数
+  const handleSell = async () => {
+    if (!mintKeypair) {
+      addLog('请先生成或选择代币地址', 'error');
+      return;
+    }
+
+    try {
+      setIsTrading(true);
+      const tradeHandler = new TradeHandler(addLog);
+      
+      // 初始化钱包
+      const initialized = await tradeHandler.initializeWallets();
+      if (!initialized) {
+        throw new Error('钱包初始化失败');
+      }
+
+      // 直接设置 mintKeypair
+      tradeHandler.mintKeypair = mintKeypair;
+
+      // 执行卖出交易
+      const result = await tradeHandler.executeSellTransactions(rugPercentage);
+      
+      if (result.success) {
+        addLog(`卖出成功，卖出比例: ${rugPercentage}%`, 'success');
+      }
+
+    } catch (error) {
+      addLog(`卖出失败: ${error.message}`, 'error');
+    } finally {
+      setIsTrading(false);
+    }
+  };
+
+  // 在组件顶部添加 useEffect
+  useEffect(() => {
+    // 确保滚动到最新日志
+    if (logEndRef.current) {
+      logEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [logs]); // 当日志更新时触发滚动
+
+  // 修改状态恢复的 useEffect
+  useEffect(() => {
+    // 页面加载时从 localStorage 恢复状态
+    const savedState = localStorage.getItem('pumpFunState');
+    if (savedState) {
+      try {
+        const state = JSON.parse(savedState);
+        
+        // 先恢复 mintKeypair，因为其他状态可能依赖它
+        if (state.mintKeypairSecretKey) {
+          const secretKey = new Uint8Array(state.mintKeypairSecretKey);
+          const keypair = Keypair.fromSecretKey(secretKey);
+          setMintKeypair(keypair);
+          setContractAddress(keypair.publicKey.toString());
+        }
+
+        // 恢复其他状态
+        if (state.minPosition) setMinPosition(state.minPosition);
+        if (state.maxPosition) setMaxPosition(state.maxPosition);
+        if (state.strategy) setStrategy(state.strategy);
+        if (state.rugPercentage) setRugPercentage(state.rugPercentage);
+        if (state.tradeMode) setTradeMode(state.tradeMode);
+        if (state.minTradePosition) setMinTradePosition(state.minTradePosition);
+        if (state.maxTradePosition) setMaxTradePosition(state.maxTradePosition);
+        if (state.tradingPercentage) setTradingPercentage(state.tradingPercentage);
+        if (state.tradeAmount) setTradeAmount(state.tradeAmount);
+        if (state.walletCount) setWalletCount(state.walletCount);
+        if (state.desiredSuffix) setDesiredSuffix(state.desiredSuffix);
+
+      } catch (error) {
+        console.error('恢复状态失败:', error);
+        // 清除可能损坏的状态
+        localStorage.removeItem('pumpFunState');
+      }
+    }
+  }, []); // 只在组件挂载时执行一次
+
+  // 添加状态保存函数
+  const saveState = useCallback(() => {
+    const state = {
+      contractAddress,
+      minPosition,
+      maxPosition,
+      strategy,
+      rugPercentage,
+      tradeMode,
+      minTradePosition,
+      maxTradePosition,
+      tradingPercentage,
+      tradeAmount,
+      walletCount,
+      desiredSuffix,
+      // 保存 mintKeypair 的 secretKey
+      mintKeypairSecretKey: mintKeypair ? Array.from(mintKeypair.secretKey) : null
+    };
+    localStorage.setItem('pumpFunState', JSON.stringify(state));
+  }, [
+    contractAddress,
+    minPosition,
+    maxPosition,
+    strategy,
+    rugPercentage,
+    tradeMode,
+    minTradePosition,
+    maxTradePosition,
+    tradingPercentage,
+    tradeAmount,
+    walletCount,
+    desiredSuffix,
+    mintKeypair
+  ]);
+
+  // 在状态变化时保存
+  useEffect(() => {
+    saveState();
+  }, [
+    contractAddress,
+    minPosition,
+    maxPosition,
+    strategy,
+    rugPercentage,
+    tradeMode,
+    minTradePosition,
+    maxTradePosition,
+    tradingPercentage,
+    tradeAmount,
+    walletCount,
+    desiredSuffix,
+    mintKeypair,
+    saveState
+  ]);
+
   return (
     <Grid 
-      templateColumns="repeat(2, 1fr)" 
-      templateRows="repeat(2, 1fr)"
+      templateColumns="repeat(2, 1fr)"  // 两列等宽
+      templateRows="repeat(2, 1fr)"     // 两行等高
       gap={4} 
       p={4} 
       h="calc(100vh - 64px)"
@@ -210,6 +354,7 @@ export default function PumpFun() {
                 isReadOnly={true}
                 placeholder="点击生成新合约地址"
                 size="sm"
+                width="500px"
               />
               <HStack>
                 <Input
@@ -217,7 +362,7 @@ export default function PumpFun() {
                   onChange={(e) => setDesiredSuffix(e.target.value)}
                   placeholder="输入后缀(区分大小写)"
                   size="sm"
-                  width="150px"
+                  width="180px"
                 />
                 {isGenerating ? (
                   <Button
@@ -325,6 +470,9 @@ export default function PumpFun() {
                 size="sm" 
                 w="full"
                 leftIcon={<span role="img" aria-label="warning">⚠️</span>}
+                onClick={handleSell}
+                isLoading={isTrading}
+                loadingText="卖出中"
               >
                 一键跑路 ({rugPercentage}%)
               </Button>
@@ -349,7 +497,7 @@ export default function PumpFun() {
           <HStack spacing={4} align="flex-start" mb={4}>
             {/* 左侧：刷单模式 */}
             <Box flex="1">
-              <Text mb={2} fontWeight="bold">刷单模式</Text>
+              <Text mb={2} fontWeight="bold">操盘模式</Text>
               <RadioGroup value={tradeMode} onChange={setTradeMode}>
                 <HStack spacing={4}>
                   <Radio value="up" colorScheme="green">拉盘</Radio>
@@ -451,7 +599,7 @@ export default function PumpFun() {
       </GridItem>
 
       {/* 左下日志区域 */}
-      <GridItem w="100%" h="100%">
+      <GridItem w="100%" h="100%" overflow="hidden">
         <Box
           w="full"
           h="full"
@@ -459,16 +607,27 @@ export default function PumpFun() {
           borderWidth="1px"
           borderColor="gray.700"
           borderRadius="lg"
-          p={4}
           overflow="hidden"
           display="flex"
           flexDirection="column"
         >
-          <Text mb={2} fontWeight="bold" color="gray.100">操作日志</Text>
+          {/* 标题区域 */}
+          <Box 
+            p={2} 
+            borderBottomWidth="1px" 
+            borderBottomColor="gray.700"
+            h="40px"
+            flexShrink={0}  // 防止标题被压缩
+          >
+            <Text fontWeight="bold" color="gray.100">操作日志</Text>
+          </Box>
+
+          {/* 日志内容区域 */}
           <Box
             ref={logContainerRef}
             flex="1"
             overflowY="auto"
+            p={2}
             css={{
               '&::-webkit-scrollbar': {
                 width: '4px',
@@ -481,26 +640,39 @@ export default function PumpFun() {
                 background: 'gray.600',
                 borderRadius: '24px',
               },
+              scrollBehavior: 'smooth',
             }}
           >
-            <VStack align="stretch" spacing={1}>
-              {logs.slice(-8).map(log => (
+            <VStack 
+              align="stretch" 
+              spacing={1}
+            >
+              {logs.slice(-100).map(log => (
                 <HStack
                   key={log.id}
-                  p={2}
+                  p={1}
                   bg="gray.800"
                   borderRadius="md"
-                  fontSize="sm"
-                  borderLeft="4px solid"
+                  fontSize="xs"
+                  borderLeft="3px solid"
                   borderLeftColor={
                     log.type === 'error' ? 'red.500' :
                     log.type === 'warning' ? 'yellow.500' :
                     log.type === 'success' ? 'green.500' :
                     'blue.500'
                   }
-                  h="32px"
+                  h="24px"  // 固定每条日志的高度
+                  minH="24px"  // 确保最小高度
+                  maxH="24px"  // 确保最大高度
+                  overflow="hidden"
                 >
-                  <Text color="gray.400" fontSize="xs" w="60px">
+                  <Text 
+                    color="gray.400" 
+                    fontSize="xs" 
+                    w="45px"
+                    flexShrink={0}
+                    lineHeight="16px"  // 固定行高
+                  >
                     {log.time}
                   </Text>
                   <Text
@@ -511,19 +683,25 @@ export default function PumpFun() {
                       'blue.300'
                     }
                     isTruncated
+                    flex="1"
+                    overflow="hidden"
+                    textOverflow="ellipsis"
+                    whiteSpace="nowrap"
+                    fontSize="xs"
+                    lineHeight="16px"  // 固定行高
                   >
                     {log.message}
                   </Text>
                 </HStack>
               ))}
-              <div ref={logEndRef} />
+              <div ref={logEndRef} style={{ float: 'left', clear: 'both' }} />
             </VStack>
           </Box>
         </Box>
       </GridItem>
 
       {/* K线图区域 */}
-      <GridItem w="100%" h="100%" colSpan={1} rowSpan={2}>
+      <GridItem w="100%" h="100%">
         <Box
           w="full"
           h="full"
