@@ -6,8 +6,10 @@
 
 请勿进行倒卖！！！！！！！！
 
-## 图
+## 效果图
 <img width="1280" alt="image" src="https://github.com/user-attachments/assets/4605b306-467c-4d39-a28a-fa2a44fc33af">
+<img width="1280" alt="image" src="https://github.com/user-attachments/assets/b6243957-99fa-452d-9e03-eaa131b50dc3">
+<img width="1280" alt="image" src="https://github.com/user-attachments/assets/875f35b7-db52-4d2a-a117-ee4f7cce50da">
 
 ## 主要功能
 
