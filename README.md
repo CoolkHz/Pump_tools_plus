@@ -65,7 +65,7 @@
 1. 克隆项目
 ```bash
 git clone https://github.com/vnxfsc/Pump_tools_bak.git
-cd solana-tools
+cd Pump_tools_bak
 ```
 
 2. 安装依赖
