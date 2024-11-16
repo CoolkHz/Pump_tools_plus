@@ -5,6 +5,10 @@
 联系我：https://t.me/Pornhub_CNC
 
 请勿进行倒卖！！！！！！！！
+
+## 图
+<img width="1280" alt="image" src="https://github.com/user-attachments/assets/4605b306-467c-4d39-a28a-fa2a44fc33af">
+
 ## 主要功能
 
 ### 1. 钱包管理 (Wallet Manager)
