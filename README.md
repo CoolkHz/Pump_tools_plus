@@ -2,7 +2,7 @@
 
 一个功能强大的PumpFun工具集合，包含钱包管理、虚拟地址生成和交易执行等功能。
 
-联系我：https://t.me/Pornhub_CNC
+联系我：https://t.me/Coolkhz
 
 请勿进行倒卖！！！！！！！！
 
@@ -73,7 +73,7 @@
 
 1. 克隆项目
 ```bash
-git clone https://github.com/vnxfsc/Pump_tools_bak.git
+git clone https://github.com/CoolkHz/Pump_tools_plus.git
 cd Pump_tools_bak
 ```
 
